@@ -2,6 +2,8 @@ from state import State
 from GameBoard import GameBoard
 from MiniMax import MiniMax
 
+import time
+
 class GomokuGame():
     """五子棋游戏 方便测试"""
     def __init__(self, player = 2, size = 15):
@@ -23,22 +25,23 @@ class GomokuGame():
             gb.addStone(1, r, c)
             print(gb)
         
-        i = 0
         # 游戏循环
         while gb.identifyWin() == -1:
             print("Waiting for computer...")
             s = State(board=gb, player=3-self.player)
+            startT = time.time() #计时
             mm = MiniMax()
-            action = mm.getAction(gameState=s, maxDepth=3, maxBranch=64)
-            print("Best Predicted Score:"+str(action[0]) + "; Location:(" + str(action[1][0] + 1) +"," + chr(action[1][1] + 65) +")")
+            action = mm.getAction(gameState=s, maxDepth=3, maxBranch=50)
+            endT = time.time()
+            print("Time Spent:" + str(int(endT - startT)) + "s; Best Predicted Score:"+str(action[0]) + "; Location:(" + str(action[1][0] + 1) +"," + chr(action[1][1] + 65) +")")
             gb.addStone(3-self.player, action[1][0], action[1][1])
             print(gb)
             if gb.identifyWin() != -1:
                 break
             r, c = self.prompt()
             gb.addStone(self.player, r, c)
+
             print(gb)
-            i += 1
 
         winSide = gb.identifyWin()
         if winSide == 1:
