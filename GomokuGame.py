@@ -29,7 +29,7 @@ class GomokuGame():
             print("Waiting for computer...")
             s = State(board=gb, player=3-self.player)
             mm = MiniMax()
-            action = mm.getAction(gameState=s, maxDepth=3, maxBranch=50)
+            action = mm.getAction(gameState=s, maxDepth=3, maxBranch=64)
             print("Best Predicted Score:"+str(action[0]) + "; Location:(" + str(action[1][0] + 1) +"," + chr(action[1][1] + 65) +")")
             gb.addStone(3-self.player, action[1][0], action[1][1])
             print(gb)
