@@ -60,34 +60,26 @@ class GameBoard():
         for i in range(self.size * self.size):
             self.board[i] = 0
 
-    def getEmpty(self, param=1):
+    def getEmpty(self, order=True):
         """ 以列表形式返回空的格子坐标 列表的每一项为(row,col)
-            param 1: 按照到最近的棋子的距离由近到远的顺序排序
-            param 2: 过滤掉到最近的棋子的距离大于3的棋子
-        """
+            order 为True则按照到最近的棋子的距离由近到远的顺序排序"""
         res = []
         filled = []
         for i in range(self.size):
             for j in range(self.size):
                 if self.board[i * self.size + j] == 0:
                     res.append((i, j))
-                elif param != 0:
+                elif order:
                     filled.append((i, j))
 
         def shortest(element):
             return min(map(lambda e: (element[0] - e[0]) ** 2 + (element[1] - e[1]) ** 2, filled))
 
-        if param == 1:
+        if order:
             if len(filled) != 0:
                 res.sort(key=shortest)
             else:
                 res.sort(key=lambda element: (element[0] - self.size//2) ** 2 + (element[1] - self.size//2) ** 2)
-        
-        if param == 2:
-            if len(filled) != 0:
-                return list(filter(lambda x: shortest(x) <= 9, res))
-            else:
-                return list(filter(lambda x: x[0] == x[1] == self.size//2, res))
 
         return res
 
@@ -221,19 +213,7 @@ class GameBoard():
             返回-1 ~ 1, 接近1代表黑棋即将胜利 接近-1代表白棋即将胜利
         """
 
-        def testStones(stones, side):
-            """检查格子 并返回所有测试的列表"""
-            res = []
-            res.append(testStonesParam(stones[0:5], side, 1) or testStonesParam(stones[1:6], side, 1))
-            res.append(testStonesParam(stones, 3 - side, 2))
-            res.append(testStonesParam(stones[0:5], 3 - side, 1) or testStonesParam(stones[1:6], 3 - side, 1))
-            res.append(testStonesParam(stones, side, 3))
-            res.append(testStonesParam(stones, 3 - side, 3))
-            res.append(testStonesParam(stones, side, 4))
-            res.append(testStonesParam(stones, 3 - side, 4))
-            return res
-
-        def testStonesParam(stones, side, param):
+        def testStones(stones, side, param):
             """ 检查一些格子的情况
                 param:  1: 在5个格子里有4个side,另外一个为空 ○●●●●   ●○●●●   ●●○●● 以及镜像 (对于一个state来说，这种情况已经胜利了)
                         2: 在6个格子里中间连续4个是side,边上两个是空 ○●●●●○ (对手出现这样的情况，如果没有1已经输了)
@@ -291,25 +271,23 @@ class GameBoard():
 
             
             
-        def connectedNum(side):
-            """ 根据x的长度切片棋盘(所有可能性),并根据param对切片进行测试,返回测试[c54, c64o, c54o, c63, c63o, c62, c62o]通过的情况T/F"""
-            res = [False, False, False, False, False, False, False]
-            x = 6 # 截取片段长度
+        def connectedNum(side, x, param):
+            """ 根据x的长度切片棋盘(所有可能性),并根据param对切片进行测试,返回测试通过的数量"""
+            pass_num = 0
+
             # 横
             for i in range(self.size):
                 for j in range(self.size - x + 1):
                     stones = self.board[i * self.size + j : i * self.size + j + x]
-                    test = testStones(stones, side)
-                    for t in range(len(test)):
-                        res[t] = res[t] or test[t]
+                    if testStones(stones, side, param):
+                        pass_num += 1
 
             # 竖
             for j in range(self.size):
                 for i in range(self.size - x + 1):
                     stones = self.board[i * self.size + j : (i + x) * self.size + j : self.size]
-                    test = testStones(stones, side)
-                    for t in range(len(test)):
-                        res[t] = res[t] or test[t]
+                    if testStones(stones, side, param):
+                        pass_num += 1
 
             # 左下到右上 (上半部分)
             for i in range(x - 1, self.size):
@@ -318,35 +296,31 @@ class GameBoard():
                     if end < 0:
                         end = 0
                     stones = self.board[(i - j) * self.size + j : end : -self.size + 1]
-                    test = testStones(stones, side)
-                    for t in range(len(test)):
-                        res[t] = res[t] or test[t]
+                    if testStones(stones, side, param):
+                        pass_num += 1
 
             # 左下到右上 (下半部分)
             for i in range(self.size - x, 0, -1): #self.size - 5 到 1
                 for j in range(self.size - i - x + 1):
                     stones = self.board[(self.size - 1 - j) * self.size + i + j : (self.size - x - 1 - j) * self.size + i + j + x: -self.size + 1]
-                    test = testStones(stones, side)
-                    for t in range(len(test)):
-                        res[t] = res[t] or test[t]
+                    if testStones(stones, side, param):
+                        pass_num += 1
 
             # 左上到右下 (上半部分)
             for i in range(self.size - x + 1):
                 for j in range(self.size - i - x + 1):
                     stones = self.board[j * self.size + i + j : (j + x) * self.size + i + j + x : self.size + 1]
-                    test = testStones(stones, side)
-                    for t in range(len(test)):
-                        res[t] = res[t] or test[t]
+                    if testStones(stones, side, param):
+                        pass_num += 1
 
             # 左上到右下 (下半部分)
             for i in range(1, self.size - x + 1):
                 for j in range(self.size - i - x + 1):
                     stones = self.board[(i + j) * self.size + j : (i + j + x) * self.size + j + x : self.size + 1]
-                    test = testStones(stones, side)
-                    for t in range(len(test)):
-                        res[t] = res[t] or test[t]
+                    if testStones(stones, side, param):
+                        pass_num += 1
 
-            return res
+            return pass_num
 
         #函数返回的值
         if player == 1:
@@ -354,32 +328,32 @@ class GameBoard():
         elif player == 2:
             factor = -1
 
-        c54, c64o, c54o, c63, c63o, c62, c62o = connectedNum(player)
-        if c54: #出现c54已经胜利
+        c54 = connectedNum(player, x=5, param=1)
+        if c54 > 0: #出现c54已经胜利
             return 0.99 * factor
 
-        #c64o = connectedNum(3 - player, x=6, param=2)
-        if c64o: #对手出现c64,且自己没有c54,已经输了
+        c64o = connectedNum(3 - player, x=6, param=2)
+        if c64o > 0: #对手出现c64,且自己没有c54,已经输了
             return -0.99 * factor
 
-        #c54o = connectedNum(3 - player, x=5, param=1)
-        if c54o: #对手出现c54,必须堵住,很不利
+        c54o = connectedNum(3 - player, x=5, param=1)
+        if c54o > 0: #对手出现c54,必须堵住,很不利
             return -0.9 * factor
 
-        #c63 = connectedNum(player, x=6, param=3)
-        if c63: #出现c63,不出意外,即将胜利
+        c63 = connectedNum(player, x=6, param=3)
+        if c63 > 0: #出现c63,不出意外,即将胜利
             return 0.7 * factor
 
-        #c63o = connectedNum(3 - player, x=6, param=3)
-        if c63o: #对手出现c63,很被动,必须堵住
+        c63o = connectedNum(3 - player, x=6, param=3)
+        if c63o > 0: #对手出现c63,很被动,必须堵住
             return -0.5 * factor
 
-        #c62 = connectedNum(player, x=6, param=4)
-        if c62: #出现c62再下一步可以变成c63,给对手造成威胁
+        c62 = connectedNum(player, x=6, param=4)
+        if c62 > 0: #出现c62再下一步可以变成c63,给对手造成威胁
             return 0.3 * factor
 
-        #c62o = connectedNum(3 - player, x=6, param=4)
-        if c62o: #对手出现c62再下一步可以变成c63
+        c62o = connectedNum(3 - player, x=6, param=4)
+        if c62o > 0: #对手出现c62再下一步可以变成c63
             return -0.1 * factor
 
         return 0
