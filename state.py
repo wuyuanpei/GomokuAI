@@ -29,9 +29,9 @@ class State():
             successorStates.append(nextState)
         return successorStates
     
-    def evaluate(self):
-        """ 根据棋盘和当前玩家评估状态分数
-            -1 ~ 1: 1表示黑棋胜利 -1表示白棋胜利 0平局 None没有结果
+    def isFinish(self):
+        """ 判断游戏是否结束
+            返回 1表示黑棋胜利 -1表示白棋胜利 0平局 None没有结果
         """
         gameResult = self.board.identifyWin()
         if gameResult == -1:
@@ -42,6 +42,10 @@ class State():
             return -1
         else:
             return 0
+
+    def evaluate(self):
+        """评估当前局势"""
+        return self.board.evaluateBoard(self.player)
         
 
 

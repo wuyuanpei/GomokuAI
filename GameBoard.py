@@ -60,13 +60,27 @@ class GameBoard():
         for i in range(self.size * self.size):
             self.board[i] = 0
 
-    def getEmpty(self):
-        """以列表形式返回空的格子坐标 列表的每一项为(row,col)"""
+    def getEmpty(self, order=True):
+        """ 以列表形式返回空的格子坐标 列表的每一项为(row,col)
+            order 为True则按照到最近的棋子的距离由近到远的顺序排序"""
         res = []
+        filled = []
         for i in range(self.size):
             for j in range(self.size):
                 if self.board[i * self.size + j] == 0:
                     res.append((i, j))
+                elif order:
+                    filled.append((i, j))
+
+        def shortest(element):
+            return min(map(lambda e: (element[0] - e[0]) ** 2 + (element[1] - e[1]) ** 2, filled))
+
+        if order:
+            if len(filled) != 0:
+                res.sort(key=shortest)
+            else:
+                res.sort(key=lambda element: (element[0] - self.size//2) ** 2 + (element[1] - self.size//2) ** 2)
+
         return res
 
     def random(self, hand):
@@ -193,14 +207,168 @@ class GameBoard():
 
         return -1 # 没有结束
         
+    def evaluateBoard(self, player):
+        """ 根据player返回棋盘状态
+            player 是 1 此时是黑棋下 2 此时是白棋下
+            返回-1 ~ 1, 接近1代表黑棋即将胜利 接近-1代表白棋即将胜利
+        """
+
+        def testStones(stones, side, param):
+            """ 检查一些格子的情况
+                param:  1: 在5个格子里有4个side,另外一个为空 ○●●●●   ●○●●●   ●●○●● 以及镜像 (对于一个state来说，这种情况已经胜利了)
+                        2: 在6个格子里中间连续4个是side,边上两个是空 ○●●●●○ (对手出现这样的情况，如果没有1已经输了)
+                        3: 在6个格子里中间三个连着是side,另外三个为空 ○●●●○○   ○○●●●○   ○●○●●○   ○●●○●○ (对于一个state来说，只要对面没有情况1，那么这种情况也已经胜利了)
+                        4: 在6个格子里中间有两个side,另外四个为空 ○●●○○○   ○○●○●○   ○●○○●○ 以及镜像 （逼迫对手反应的state不然就变成2了)
+            """
+            if param == 1:
+                count = 0
+                for stone in stones:
+                    if stone == side:
+                        count += 1
+                    elif stone == 0:
+                        pass
+                    else:
+                        return False
+                if count == 4:
+                    return True
+                else:
+                    return False
+
+            elif param == 2:
+                return stones[0] == stones[5] == 0 and stones[1] == stones[2] == stones[3] == stones[4] == side
+
+            elif param == 3:
+                if stones[0] != 0 or stones[5] != 0:
+                    return False #两端必须为空
+                count = 0
+                for stone in stones[1:5]:
+                    if stone == side:
+                        count += 1
+                    elif stone == 0:
+                        pass
+                    else:
+                        return False
+                if count == 3:
+                    return True
+                else:
+                    return False
+
+            elif param == 4:
+                if stones[0] != 0 or stones[5] != 0:
+                    return False #两端必须为空
+                count = 0
+                for stone in stones[1:5]:
+                    if stone == side:
+                        count += 1
+                    elif stone == 0:
+                        pass
+                    else:
+                        return False
+                if count == 2:
+                    return True
+                else:
+                    return False
+
+            
+            
+        def connectedNum(side, x, param):
+            """ 根据x的长度切片棋盘(所有可能性),并根据param对切片进行测试,返回测试通过的数量"""
+            pass_num = 0
+
+            # 横
+            for i in range(self.size):
+                for j in range(self.size - x + 1):
+                    stones = self.board[i * self.size + j : i * self.size + j + x]
+                    if testStones(stones, side, param):
+                        pass_num += 1
+
+            # 竖
+            for j in range(self.size):
+                for i in range(self.size - x + 1):
+                    stones = self.board[i * self.size + j : (i + x) * self.size + j : self.size]
+                    if testStones(stones, side, param):
+                        pass_num += 1
+
+            # 左下到右上 (上半部分)
+            for i in range(x - 1, self.size):
+                for j in range(i - x + 2):
+                    end = (i - j - x) * self.size + (j + x) # end可能会小于0 切片时会有错误
+                    if end < 0:
+                        end = 0
+                    stones = self.board[(i - j) * self.size + j : end : -self.size + 1]
+                    if testStones(stones, side, param):
+                        pass_num += 1
+
+            # 左下到右上 (下半部分)
+            for i in range(self.size - x, 0, -1): #self.size - 5 到 1
+                for j in range(self.size - i - x + 1):
+                    stones = self.board[(self.size - 1 - j) * self.size + i + j : (self.size - x - 1 - j) * self.size + i + j + x: -self.size + 1]
+                    if testStones(stones, side, param):
+                        pass_num += 1
+
+            # 左上到右下 (上半部分)
+            for i in range(self.size - x + 1):
+                for j in range(self.size - i - x + 1):
+                    stones = self.board[j * self.size + i + j : (j + x) * self.size + i + j + x : self.size + 1]
+                    if testStones(stones, side, param):
+                        pass_num += 1
+
+            # 左上到右下 (下半部分)
+            for i in range(1, self.size - x + 1):
+                for j in range(self.size - i - x + 1):
+                    stones = self.board[(i + j) * self.size + j : (i + j + x) * self.size + j + x : self.size + 1]
+                    if testStones(stones, side, param):
+                        pass_num += 1
+
+            return pass_num
+
+        #函数返回的值
+        if player == 1:
+            factor = 1
+        elif player == 2:
+            factor = -1
+
+        c54 = connectedNum(player, x=5, param=1)
+        if c54 > 0: #出现c54已经胜利
+            return 0.99 * factor
+
+        c64o = connectedNum(3 - player, x=6, param=2)
+        if c64o > 0: #对手出现c64,且自己没有c54,已经输了
+            return -0.99 * factor
+
+        c54o = connectedNum(3 - player, x=5, param=1)
+        if c54o > 0: #对手出现c54,必须堵住,很不利
+            return -0.9 * factor
+
+        c63 = connectedNum(player, x=6, param=3)
+        if c63 > 0: #出现c63,不出意外,即将胜利
+            return 0.7 * factor
+
+        c63o = connectedNum(3 - player, x=6, param=3)
+        if c63o > 0: #对手出现c63,很被动,必须堵住
+            return -0.5 * factor
+
+        c62 = connectedNum(player, x=6, param=4)
+        if c62 > 0: #出现c62再下一步可以变成c63,给对手造成威胁
+            return 0.3 * factor
+
+        c62o = connectedNum(3 - player, x=6, param=4)
+        if c62o > 0: #对手出现c62再下一步可以变成c63
+            return -0.1 * factor
+
+        return 0
+        
 
         
 
 
 
 
-# gb = GameBoard()
-# gb.random(24)
+# gb = GameBoard(size=8)
+# gb.random(34)
+# print(gb)
+# print(gb.evaluateBoard(2))
+
 # print(gb)
 # print(gb.identifyWin())
 # gb.addStone(1, 3, 5)
